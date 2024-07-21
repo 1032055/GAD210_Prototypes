@@ -5,9 +5,25 @@ using UnityEngine.UI;
 
 public class AudioFinder : MonoBehaviour
 {
-    public List<AudioSource> audioSourcesInRange = new List<AudioSource>();
+    public List<AudioSource> audioSourcesInRange = new List<AudioSource>(), 
+        activeAudioSources = new List<AudioSource>();
 
-    float detectionDistance = 5;
+    Vector3 test =  Vector3.zero;
+
+    float detectionDistance = 5, detectionDir, halfScreenHori = 960, halfScreenVer = 540;
+
+    [SerializeField] RectTransform display;
+    Vector2 displayPos;
+
+    private void Start()
+    {
+        detectionDir = 0.5f;
+    }
+
+    private void Update()
+    {
+        CheckAudioPlaying();
+    }
 
     private void OnTriggerEnter(Collider other)
     {
@@ -49,21 +65,70 @@ public class AudioFinder : MonoBehaviour
         {
             if(audioSourcesInRange[i].isPlaying)
             {
-                Debug.Log("Noise in Range");
+                //Debug.Log("Noise in Range");
                 //Show visualisation of audio on screen
-                ShowAudio(audioSourcesInRange[i]);
+
+                if (!activeAudioSources.Contains(audioSourcesInRange[i]))
+                {
+                    activeAudioSources.Add(audioSourcesInRange[i]);
+                    GetAudioPos();
+                }
+            }
+        }
+
+        for(int i = 0; i < activeAudioSources.Count; i++)
+        {
+            if(!activeAudioSources[i].isPlaying)
+            {
+                Debug.Log("removing from active list: " + activeAudioSources[i]);
+                activeAudioSources.Remove(activeAudioSources[i]);
             }
         }
     }
 
-    private void ShowAudio(AudioSource _activeAudio)
+    private void GetAudioPos()
     {
         Debug.Log("Displaying UI");
+        AudioSource _playing = activeAudioSources[^1];
+
+        GameObject obj = _playing.gameObject;
+        Vector3 direction = obj.transform.position;
+        Debug.Log("Audio in dir: " + direction);
+        test = direction;
+
+        float zPos = direction.z,
+            xPos = direction.x;
+
+        if (_playing.isPlaying)
+        {
+            if (xPos > detectionDir)
+            {
+                //Right side of screen
+                displayPos = new Vector2(halfScreenHori, zPos*100);
+            }
+            if (xPos < -detectionDir)
+            {
+                //Left side of screen
+                displayPos = new Vector2(-halfScreenHori, zPos * 100);
+            }
+            if (zPos < -detectionDir)
+            {
+                //Bottom of screen
+                displayPos = new Vector2(xPos * 100, -halfScreenVer);
+            }
+            DisplayAudio(displayPos);
+        }
+    }
+
+    private void DisplayAudio(Vector2 _displayPos)
+    {
+        display.anchoredPosition = _displayPos;
     }
 
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, detectionDistance);
+        Gizmos.DrawLine(this.transform.position, test);
     }
 }
